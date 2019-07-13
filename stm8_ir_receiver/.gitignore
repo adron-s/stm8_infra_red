@@ -1,5 +1,5 @@
 .*
 build/*
-gen_phase/gen
+gen_phases/gen
 decode_phase/decode
 !.gitignore

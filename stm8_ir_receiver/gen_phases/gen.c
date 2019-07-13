@@ -91,7 +91,8 @@ void fill_delays_from_ir_code(uint32_t code){
 }
 
 int main(int argc, char *argv[]){
-	const uint32_t code = 0x189835B5;
+	//const uint32_t code = 0x189835B5; //OK button
+	const uint32_t code = 0x0383ECEC; //вкл/выкл на телике Philips
 	fill_delays_from_ir_code(code);
 	//printf("\n");
 	//printf("IR code = %X\n", calc_32bit_ir_code());

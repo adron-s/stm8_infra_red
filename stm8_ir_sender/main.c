@@ -86,10 +86,15 @@ int main(void){
 
 	 массив генерирует ф-я fill_delays_from_ir_code(uint32_t code)
 	 из stm8_ir_receiver/gen_phases/gen.c */
-static uint8_t delays[DELAYS_COUNT] = {
+/* static uint8_t delays[DELAYS_COUNT] = {
 	0x0, 0xF7,
 	00, 00, 00, 02, 00, 00, 00, 00, 02, 02, 02, 00, 02, 02, 02, 02,
 	02, 02, 00, 02, 02, 00, 00, 02, 00, 00, 02, 00, 00, 02, 02, 00,
+}; */
+static uint8_t delays[DELAYS_COUNT] = {
+	00, 0xF7,
+	00, 00, 00, 00, 00, 00, 02, 00, 02, 02, 02, 02, 02, 02, 00, 02,
+	00, 02, 00, 00, 02, 00, 00, 00, 02, 00, 02, 02, 00, 02, 02, 02
 };
 static volatile uint8_t delays_index; //текущий индекс бита задержки
 static volatile uint16_t pc; //pass counter - смчетчик проходов таймера
