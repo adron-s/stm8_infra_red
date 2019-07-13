@@ -1,8 +1,8 @@
 #include "stm8s.h"
 #include "stdio.h"
 
-uint8_t g_flag1ms = 0;    // flag for 1ms interrupt (for TIM4 ISR)
-uint32_t g_count1ms = 0;   // 1ms counter (for TIM4 ISR)
+uint8_t g_flag1ms = 0; //flag for 1ms interrupt (for TIM4 ISR)
+uint32_t g_count1ms = 0; //1ms counter (for TIM4 ISR)
 
 static void delay(uint32_t t){
 	while(t--);
@@ -11,8 +11,9 @@ static void delay(uint32_t t){
 /* сколько для DIV_8 таймера нужно тиков чтобы достичь 38Khz */
 #define KHZ_38 52
 #define KHZ_38_HALF 26
+//сколько проходов таймера нужно чтобы достичь 0.56ms
+#define DOT_56 21
 
-//#define UART
 void CLK_Config(void);
 void tim2_pre_start_init(void);
 int main(void){
@@ -20,11 +21,12 @@ int main(void){
 	uint32_t pred = 0;
 	uint8_t key = 0;
 
+	//светодиод на плате
 	GPIOB->DDR |= GPIO_PIN_5;
 	GPIOB->CR1 |= GPIO_PIN_5;
-	GPIOB->ODR |= GPIO_PIN_5;
+	GPIOB->ODR |= GPIO_PIN_5; //!инвертированый
 
-	//PD4
+	//PD4 - TIM2_CH1
 	GPIOD->DDR |= GPIO_PIN_4;
 	GPIOD->CR1 |= GPIO_PIN_4;
 	GPIOD->ODR &= ~GPIO_PIN_4; //чтобы TIM2_CH1 до запуска таймера был LOW
@@ -40,6 +42,12 @@ int main(void){
 	//http://ziblog.ru/2011/07/31/rabotaem-s-ik-pultom.html
 	//http://ziblog.ru/2013/05/14/distantsionnoe-upravlenie-ot-ik-pulta.html
 	//http://www.count-zero.ru/2016/stm8_spl_pwm/ - Общие данные о таймерах на stm8
+
+	/* IR импульс(длительностью 0.56ms) нужно подавать на IR диод шим сигналом с частотой 38Khz.
+		 Это называется частотная модуляция. Не достаточно просто подать логическую единицу а потом
+		 в конце 0. Приемник такой сигнал не примет!
+		 Нужен именно шим сигнал! Для 0.56ms это ~ 21 такт шима на 38Khz.
+		 Шим сигнал у нас генерируется TIM2_CH1. Выход PD4. */
 
 	/* подключать таймер к шине тактирования. это обычно делают в CLK_Config */
 	CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER2, ENABLE);
@@ -69,9 +77,6 @@ int main(void){
 	enableInterrupts();
 	while(1){	}
 }
-
-//сколько проходов таймера нужно чтобы достичь 0.56ms
-#define DOT_56 21
 
 /* 2 + 32 */
 #define DELAYS_COUNT 34

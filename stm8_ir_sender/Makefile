@@ -18,7 +18,7 @@ compile:
 #	$(CC) $(CFLAGS) -I $(INCLUDEPATH) -I ./ -D $(DEFINES) -o $(OUTPUT_DIR)/ $(STDPER_LIB_SRC)/stm8s_gpio.c -c
 #	$(CC) $(CFLAGS) -I $(INCLUDEPATH) -I ./ -D $(DEFINES) -o $(OUTPUT_DIR)/ $(STDPER_LIB_SRC)/stm8s_tim2.c -c
 #компил файла с ф-ями обработчиков прерываний
-	$(CC) $(CFLAGS) -I $(INCLUDEPATH) -I ./ -D $(DEFINES) -o $(OUTPUT_DIR)/ stm8s_it.c -c
+#	$(CC) $(CFLAGS) -I $(INCLUDEPATH) -I ./ -D $(DEFINES) -o $(OUTPUT_DIR)/ stm8s_it.c -c
 	$(CC) $(CFLAGS) -I $(INCLUDEPATH) -I ./ -D $(DEFINES) -o $(OUTPUT_DIR)/ main.c -c
 	$(CC) $(CFLAGS)	-D $(DEFINES) -o $(OUTPUT_DIR)/$(SOURCE).ihx \
 	$(OUTPUT_DIR)/stm8s_it.rel \

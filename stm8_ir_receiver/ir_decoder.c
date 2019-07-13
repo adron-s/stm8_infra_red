@@ -56,8 +56,8 @@ uint32_t calc_32bit_ir_code(void){
 		end = 32 + IR_DECODER_NUMBER_OF_MISSING_INTERVAL;
 	for(a = IR_DECODER_NUMBER_OF_MISSING_INTERVAL; a < end; a++){
 		timer_delay = ir_decoder.delays[a];
-		//пропуск 31-го(самого 1-го, старшего) бита т.к. он NEC кодировке он всегда 0.
-		//самый первый бит посылки используется только для сравнения и не учитывается.
+		/* пропуск 31-го(самого 1-го, старшего) бита т.к. в NEC кодировке он всегда 0.
+			 самый первый бит посылки используется только для сравнения и не учитывается. */
 		if(a > IR_DECODER_NUMBER_OF_MISSING_INTERVAL){
 			res <<= 1;
 			if(timer_delay < min || timer_delay > max){

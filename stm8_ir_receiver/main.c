@@ -3,12 +3,16 @@
 #include "stdio.h"
 #include "ir_decoder.h"
 
-uint8_t g_flag1ms = 0;    // flag for 1ms interrupt (for TIM4 ISR)
-uint32_t g_count1ms = 0;   // 1ms counter (for TIM4 ISR)
+#define UART
+
+uint8_t g_flag1ms = 0; //flag for 1ms interrupt (for TIM4 ISR)
+uint32_t g_count1ms = 0; //1ms counter (for TIM4 ISR)
 
 static void delay(uint32_t t){
 	while(t--);
 }
+
+#ifdef UART
 
 /* моя реализация putchar и его производных */
 void putchar(char c){
@@ -89,8 +93,8 @@ void MY_UART1_Init(uint32_t BaudRate, UART1_WordLength_TypeDef WordLength,
 	/* Clear the Clock Enable bit */
 	UART1->CR3 &= (uint8_t)(~UART1_CR3_CKEN);
 }
+#endif /* UART */
 
-#define UART
 void CLK_Config(void);
 int main(void){
 	int a = 0;
@@ -107,7 +111,7 @@ int main(void){
 		UART1_SYNCMODE_CLOCK_DISABLE);
 	//printf использовать можно но очень уд жорого получается(по занимаемому месту!)
 	strsend("OwL is READY!\n\r");
-#endif
+#endif /* UART */
 
 	ir_decoder_init();
 
@@ -132,7 +136,7 @@ int main(void){
 	/* подключать таймер к шине тактирования. это обычно делают в CLK_Config */
 	CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER2, ENABLE);
 	TIM2_DeInit(); //ресет таймера
-	//устанавливается частота работы таймера. prescaler - предделитель, 16250 - 1 это period.
+	//устанавливается частота работы таймера. prescaler - предделитель, 16250 - 1 это периот таймера.
 	/* 1 тик таймера это:
 			16Mhz / 32 =  500Khz = 0.002ms = 2µs
 			16Mhz / 64 =  250Khz = 0.004ms = 4µs
@@ -142,23 +146,24 @@ int main(void){
 				DIV_64  | 250Khz | 0x0F6 | 246 | 246 * 0.004ms = 0,984ms ~ 1Khz
 				DIV_128 | 125Khz | 0x07B | 123 | 123 * 0.008ms = 0,984ms ~ 1Khz
 			То есть для DIV_128 таймер тикает 125 000 раз в секунду.
-		 	Второй параметр это макимальное число разрешенных тиков таймера
-		 	по достижении которого прерывания(CH1 и CH2) больше не генерируются! и соответственно по таймауту
-		 	сгерерируется прерывание CH3.
-		 	В частности 16250 - 1 это 130 ms при DIV_128 16250×0.008ms = 130ms */
+		 	Второй параметр это макимальное число тиков таймера, 	по достижении которых
+		 	при появлении сигнала на входах DP4 и DP4 прерывания для CH1 и CH2 больше не
+		 	генерируются! и соответственно по таймауту сгерерируется прерывание CH3.
+		 	В частности 16250 - 1 это 130 ms при DIV_128 16250×0.008ms = 130ms.
+		 	Минус 1 так как отсчет ведется начиная с 0. */
 	TIM2_TimeBaseInit(TIM2_PRESCALER_128, 16250 - 1); //устанавливается частота работы таймера
 	//чтобы прерывание таймаута вызывалось один раз а не долбило постоянно(No repeat)
 	TIM2_SelectOnePulseMode(TIM2_OPMODE_SINGLE);
 	/* захват импульса от ИК приемника. смотри картинку http://ziblog.ru/2011/07/31/rabotaem-s-ik-pultom.html.
 		 у нас сигнал инвертирован и нам интересны интервалы тишины(т.к время передачи импульса это константа
-		 560µs) и соответственно время полного интервала это полученное нами тут время + 560µs. */
-	/* если поменять местами CH1 и CH2(FALLING с RISING) то будет мерять только длину импульса. всегда!
+		 560µs или 0.56ms) и соответственно время полного интервала это полученное нами тут время + 560µs. */
+	/* если поменять местами CH1 и CH2(FALLING с RISING) то будет мерять только длину импульса(0.56ms). всегда!
 	   то есть все значения будут примерно одинаковые: 004D 004C 004D 0046 004C ... */
 	/* настраиваем 1-й канал таймера на RISING импульса */
 	TIM2_ICInit(TIM2_CHANNEL_1, TIM2_ICPOLARITY_RISING, TIM2_ICSELECTION_DIRECTTI, TIM2_ICPSC_DIV1, 0xF);
 	/* настраиваем 2-й канал таймера на FALLING импульса */
 	TIM2_ICInit(TIM2_CHANNEL_2, TIM2_ICPOLARITY_FALLING,  TIM2_ICSELECTION_DIRECTTI, TIM2_ICPSC_DIV1, 0xF);
-	//IC - это Input, есть еще OC - Output(для работы в режиме шима!)
+	//IC - это Input, есть еще OC - Output(для работы в режиме шим генератора!)
 	//включение генерации прерывания(InterrupT) для 1-го(CC1) канала таймера. IT - Interrupt.
 	TIM2_ClearFlag(TIM2_FLAG_CC1); //подготовка перед включением генерации перывания
 	TIM2_ITConfig(TIM2_IT_CC1, ENABLE); //включение генерации прерывания
@@ -175,7 +180,7 @@ int main(void){
 
 	/* врубаем таймер - чтобы он сделал первый проход.
 		 это необходимо чтобы таймер проинициализировался.
-		 первый прохъод задержка импульса считается неверно. */
+		 первый проход задержка импульса считается неверно. */
 	TIM2_Cmd(ENABLE);
 
 	//разрешаем прерывания
@@ -184,12 +189,13 @@ int main(void){
 	while(1){
 		//delay(100000);
 		//GPIOB->ODR ^= GPIO_PIN_5;
-		//key = GPIO_ReadInputData(IR_PORT) & 0x10; //PD4
+		//key = GPIO_ReadInputData(IR_PORT) & 0x10;
 		if(ir_decoder.is_received){
 			uint32_t code;
 			disableInterrupts();
 			if(ir_decoder.index){
 				code = calc_32bit_ir_code();
+				//мигаем встроенной лампочкой при нажатии кнопки OK
 				if(code == 0x189835B5)
 					GPIOB->ODR ^= GPIO_PIN_5;
 #ifdef UART
@@ -215,24 +221,23 @@ INTERRUPT_HANDLER(TIM2_CAP_COM_IRQHandler, 14){
 	//для отладки фаз(какой канал идет первым и в какой последовательности)
 	if(ir_decoder.phases_count++ < 15)
 		ir_decoder.phases <<= 2;
-	//захват импульса от ИК приемника
-	if(TIM2->SR1 & TIM2_SR1_CC1IF){ //1-й канал таймера
+	if(TIM2->SR1 & TIM2_SR1_CC1IF){ //1-й канал таймера - RISING импульса тишины
 		ir_decoder.phases |= 0x1;
 		//strsend("TIM2 chan1 is TRIGGED\n\r");
 		/* обнуление таймера(то что он раньше насчитал.
 			 TIM2_CH2 уже поссчитает задержку начиная с этого момента. */
 		TIM2->CNTRL = 0;
 		TIM2->CNTRH = 0;
-		//запуск таймера
+		//запуск таймера для измерения длительности отсюда до FALLING
 		TIM2->CR1 |= TIM2_CR1_CEN;
 		//очистка бита ожидания прерывания(аналог TIM2_ClearFlag)
 		TIM2->SR1 = (uint8_t) (~TIM2_SR1_CC1IF);
-	}else if(TIM2->SR1 & TIM2_SR1_CC2IF){ //2-й канал таймера
+	}else if(TIM2->SR1 & TIM2_SR1_CC2IF){ //2-й канал таймера - FALLING импульса тишины
 		ir_decoder.phases |= 0x2;
 		//strsend("TIM2 chan2 is TRIGGED\n\r");
 		ir_decoder_refresh();
 		//strsend("ir_decoder_refresh()\n\r");
-		//запуск таймера
+		//запуск таймера таймаута
 		TIM2->CR1 |= TIM2_CR1_CEN;
 		//очистка бита ожидания прерывания(аналог TIM2_ClearFlag)
 		TIM2->SR1 = (uint8_t) (~TIM2_SR1_CC2IF);

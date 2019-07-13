@@ -7,8 +7,6 @@
 #define IR_DECODER_NUMBER_OF_MISSING_INTERVAL 2UL
 //процентное отклонение для эталонного импульса (в процентах)
 #define IR_DECODER_INTERVAL_REFERENCE_PERCENT 20UL
-//длительность одного тика таймера (мкс)
-#define IR_DECODER_TIMER_TICK 8UL
 //максимальная длина посылки (бит) [используется для работы 32 бита]
 #define IR_DECODER_COMMAND_LENGHT_MAXIMUM 64UL
 
