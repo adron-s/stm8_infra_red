@@ -49,8 +49,11 @@ void CLK_Config(void);
 void tim2_pre_start_init(void);
 int main(void){
 	uint32_t prot = 0;
-	uint8_t now_state = 20;
-	uint8_t last_state = 10;
+	uint32_t prot2 = 0;
+	uint8_t pr_now_state = 20;
+	uint8_t pr_last_state = 10;
+  uint8_t tv_now_state = 30;
+
 	volatile uint16_t now_voltage = 0;
 	volatile char temperature = 0;
 	volatile uint32_t temperature_need_read = 0x0;
@@ -83,6 +86,12 @@ int main(void){
 	GPIOD->DDR |= GPIO_PIN_5;
 	GPIOD->CR1 |= GPIO_PIN_5;
 	GPIOD->ODR &= ~GPIO_PIN_5;
+
+	/* Philips TV Status Pin: PD6 - вход с USB телевизора чтобы знать когда телевиор включен */
+	GPIOD->CR2 &= ~GPIO_PIN_6;
+	GPIOD->DDR &= ~GPIO_PIN_6; /* Set Input mode */
+	//GPIOD->CR1 |= GPIO_PIN_6; //с подтяжкой к VCC
+	GPIOD->CR1 &= ~GPIO_PIN_6; //без подтяжки к VCC
 
 	/* Initialization of the clock */
 	CLK_Config();
@@ -129,40 +138,40 @@ int main(void){
 #endif /* UART */
 	therm_init_mode(THERM_MODE_12BIT); //инит термодатчика
 	while(1){
+		//статус телика(Вкл или Выкл)
+	  tv_now_state = GPIOD->IDR & GPIO_PIN_6 ? 1 : 0;
 		//0x249 это порог срабатывания по напряжению(чуть ниже 3.3v)
 		now_voltage = readADC1(2);
-		now_state = now_voltage > STATUS_PIN_VCC_TRIG_THRE ? 1 : 0;
-		if(now_state != last_state){
-			last_state = now_state;
+		//статус приставки(Вкл или Выкл)
+		pr_now_state = now_voltage > STATUS_PIN_VCC_TRIG_THRE ? 1 : 0;
+		if(pr_now_state != pr_last_state){
+			pr_last_state = pr_now_state;
 			prot = 1;
 		}
 		if(prot > 0)
 			prot++;
-		//защита от флапания. если now_state продержится 100000 циклов то начинаем реагировать
+		//защита от флапания. если pr_now_state продержится 100000 циклов то начинаем реагировать
 		if(prot > 100000){
 			prot = 0;
-			if(now_state){
-				strsend("now_state = On(0x");
+			if(pr_now_state){
+				strsend("pr_now_state = On(0x");
 				u16_print(now_voltage);
 				strsend(")\n\r");
 				GPIOB->ODR &= ~GPIO_PIN_5; //вкл лампочка test
 				//GPIOC->ODR |= GPIO_PIN_5; //вкл вентилятор. это сделает код контроля термодатчика.
 			}else{
-				strsend("now_state = OFF(0x");
+				strsend("pr_now_state = OFF(0x");
 				u16_print(now_voltage);
 				strsend(")\n\r");
 				GPIOB->ODR |= GPIO_PIN_5; //вЫкл лампочка test
 				GPIOC->ODR &= ~GPIO_PIN_5; //вЫкл вентилятор
 			}
-			//врубаем таймер для IR импульса
-			tim2_pre_start_init();
-			TIM2_Cmd(ENABLE);
 		}
 		/* читаем температуру, только если в данный момент нет передачи IR импульсов т.к.
 			 чтение температуры вырубает прерывания которые использует таймер передачи IR импульсов.
 			 читаем температуру только при состоянии вкл.
-			 0xAFFFF - примерно каждые 5 сек. */
-		if(now_state && temperature_need_read++ > 0xAFFFF && is_ir_in_progress == 0){
+			 0xAFFFF - примерно каждые 8 сек. */
+		if(pr_now_state && temperature_need_read++ > 0xAFFFF && is_ir_in_progress == 0){
 			temperature = GetTemperature();
 			strsend("temperature = ");
 			u8_print(temperature);
@@ -172,6 +181,24 @@ int main(void){
 			else
 				GPIOC->ODR &= ~GPIO_PIN_5; //вЫкл вентилятор
 			temperature_need_read = 0x0;
+		}
+		//если статус телика отличается от статуса приставки
+		if(tv_now_state != pr_now_state || prot2){
+			prot2++;
+		  if(prot2 > 0x8FFFF){ //делаем задержку примерно 5 сек
+				prot2 = 0;
+				if(tv_now_state != pr_now_state){
+					strsend("tv_now_state = ");
+					u8_print(tv_now_state);
+					strsend(", pr_now_state = ");
+			 	  u8_print(pr_now_state);
+					strsend(", sending IR");
+					strsend("\n\r");
+					//врубаем таймер для IR импульса
+					tim2_pre_start_init();
+					TIM2_Cmd(ENABLE);
+				}
+			}
 		}
 	}
 }
